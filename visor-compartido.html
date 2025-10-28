@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visor de Finanzas - Datos Compartidos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        .summary-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .transaction-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+        .transaction-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-income {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .badge-expense {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .badge-promise {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .badge-transfer {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .image-thumbnail {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid #e5e7eb;
+            transition: transform 0.2s;
+        }
+        .image-thumbnail:hover {
+            transform: scale(1.05);
+        }
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            cursor: zoom-out;
+        }
+        .fullscreen-overlay.active {
+            display: flex;
+        }
+        .fullscreen-overlay img {
+            max-width: 90%;
+            max-height: 90vh;
+            border-radius: 8px;
+        }
+        .filter-button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        .filter-button:hover {
+            border-color: #667eea;
+        }
+        .filter-button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: white;
+        }
+        .error {
+            background: #fee2e2;
+            border: 2px solid #dc2626;
+            color: #991b1b;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loadingScreen" class="loading">
+            <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
+            <h2 style="font-size: 24px; font-weight: bold;">Cargando datos...</h2>
+            <p style="opacity: 0.8; margin-top: 10px;">Por favor espera un momento</p>
+        </div>
+
+        <div id="errorScreen" style="display: none;">
+            <div class="card error">
+                <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+                <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Error al cargar datos</h2>
+                <p id="errorMessage"></p>
+            </div>
+        </div>
+
+        <div id="mainContent" style="display: none;">
+            <header class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
+                    <div>
+                        <h1 style="font-size: 32px; font-weight: bold; margin-bottom: 8px;">📊 <span id="profileName">Gestor de Finanzas</span></h1>
+                        <p style="opacity: 0.9;">Datos compartidos - Solo lectura</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 14px; opacity: 0.8;">Total de transacciones</div>
+                        <div style="font-size: 28px; font-weight: bold;" id="totalTransactions">0</div>
+                    </div>
+                </div>
+            </header>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                <div class="summary-box">
+                    <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">💰 Capital Inicial</div>
+                    <div style="font-size: 32px; font-weight: bold;" id="initialCapital">Q0.00</div>
+                </div>
+                <div class="summary-box" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                    <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">📈 Total Ingresos</div>
+                    <div style="font-size: 32px; font-weight: bold;" id="totalIncome">Q0.00</div>
+                </div>
+                <div class="summary-box" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                    <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">📉 Total Egresos</div>
+                    <div style="font-size: 32px; font-weight: bold;" id="totalExpense">Q0.00</div>
+                </div>
+                <div class="summary-box" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                    <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">💵 Capital Total</div>
+                    <div style="font-size: 32px; font-weight: bold;" id="totalCapital">Q0.00</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 16px;">📋 Historial de Transacciones</h2>
+                
+                <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <button class="filter-button active" onclick="filterBy('all')">Todas</button>
+                    <button class="filter-button" onclick="filterBy('income')">💰 Ingresos</button>
+                    <button class="filter-button" onclick="filterBy('expense')">💸 Egresos</button>
+                    <button class="filter-button" onclick="filterBy('promise')">📝 Promesas</button>
+                    <button class="filter-button" onclick="filterBy('transfer')">🔄 Transferencias</button>
+                </div>
+
+                <div id="transactionsList"></div>
+            </div>
+
+            <footer class="card" style="text-align: center; color: #6b7280;">
+                <p>🔒 Vista de solo lectura - Gestor de Finanzas</p>
+                <p style="font-size: 12px; margin-top: 8px;">Los datos se cargan desde el enlace compartido</p>
+            </footer>
+        </div>
+    </div>
+
+    <div id="fullscreenImageOverlay" class="fullscreen-overlay" onclick="closeFullscreenImage()">
+        <img id="fullscreenImage" src="" alt="Vista completa">
+    </div>
+
+    <script>
+        let profileData = null;
+        let currentFilter = 'all';
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSharedData();
+        });
+
+        function loadSharedData() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const sharedData = params.get('shared');
+
+                if (!sharedData) {
+                    showError('No se encontraron datos compartidos en la URL');
+                    return;
+                }
+
+                const decompressed = LZString.decompressFromEncodedURIComponent(sharedData);
+                if (!decompressed) {
+                    showError('Error al descomprimir los datos');
+                    return;
+                }
+
+                profileData = JSON.parse(decompressed);
+
+                if (!profileData || !profileData.transactions) {
+                    showError('Los datos compartidos no tienen el formato correcto');
+                    return;
+                }
+
+                displayData();
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Error al procesar los datos: ' + error.message);
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('errorScreen').style.display = 'block';
+            document.getElementById('errorMessage').textContent = message;
+        }
+
+        function displayData() {
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+
+            document.getElementById('profileName').textContent = profileData.name || 'Gestor de Finanzas';
+            document.getElementById('initialCapital').textContent = 'Q' + (profileData.initialCapital || 0).toFixed(2);
+            document.getElementById('totalTransactions').textContent = profileData.transactions.length;
+
+            calculateSummary();
+            displayTransactions();
+        }
+
+        function calculateSummary() {
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            profileData.transactions.forEach(t => {
+                if (t.type === 'income') {
+                    totalIncome += t.amount;
+                } else if (t.type === 'expense') {
+                    totalExpense += t.amount;
+                } else if (t.type === 'promise' && t.promiseStatus === 'completed') {
+                    totalIncome += t.amount;
+                }
+            });
+
+            const initialCapital = profileData.initialCapital || 0;
+            const totalCapital = initialCapital + totalIncome - totalExpense;
+
+            document.getElementById('totalIncome').textContent = 'Q' + totalIncome.toFixed(2);
+            document.getElementById('totalExpense').textContent = 'Q' + totalExpense.toFixed(2);
+            document.getElementById('totalCapital').textContent = 'Q' + totalCapital.toFixed(2);
+        }
+
+        function displayTransactions() {
+            const container = document.getElementById('transactionsList');
+            let transactions = profileData.transactions.filter(t => {
+                if (currentFilter === 'all') return true;
+                return t.type === currentFilter;
+            });
+
+            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (transactions.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 40px;">No hay transacciones para mostrar</p>';
+                return;
+            }
+
+            container.innerHTML = transactions.map(t => {
+                let badgeClass, typeIcon, typeLabel;
+                if (t.type === 'income') {
+                    badgeClass = 'badge-income';
+                    typeIcon = '💰';
+                    typeLabel = 'Ingreso';
+                } else if (t.type === 'expense') {
+                    badgeClass = 'badge-expense';
+                    typeIcon = '💸';
+                    typeLabel = 'Egreso';
+                } else if (t.type === 'promise') {
+                    badgeClass = 'badge-promise';
+                    typeIcon = t.promiseStatus === 'completed' ? '✅' : '📝';
+                    typeLabel = t.promiseStatus === 'completed' ? 'Promesa Cumplida' : 'Promesa Pendiente';
+                } else if (t.type === 'transfer') {
+                    badgeClass = 'badge-transfer';
+                    typeIcon = '🔄';
+                    typeLabel = 'Transferencia';
+                }
+
+                return `
+                    <div class="transaction-item">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 24px;">${typeIcon}</span>
+                                <span class="badge ${badgeClass}">${typeLabel}</span>
+                            </div>
+                            <div style="font-size: 24px; font-weight: bold; color: ${t.type === 'income' ? '#059669' : '#dc2626'};">
+                                Q${t.amount.toFixed(2)}
+                            </div>
+                        </div>
+                        <div style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">
+                            📅 ${formatDate(t.date)}
+                        </div>
+                        ${t.name ? `<p style="margin-bottom: 4px;"><strong>Cliente:</strong> ${t.name}</p>` : ''}
+                        ${t.concept ? `<p style="margin-bottom: 4px;"><strong>Concepto:</strong> ${t.concept}</p>` : ''}
+                        ${t.invoiceNumber ? `<p style="margin-bottom: 4px;"><strong>Factura:</strong> ${t.invoiceNumber}</p>` : ''}
+                        ${t.fundSource ? `<p style="margin-bottom: 4px;"><strong>Fuente:</strong> ${t.fundSource === 'total' ? '💰 Capital Total' : '💵 Caja Chica'}</p>` : ''}
+                        ${t.promiseDate ? `<p style="margin-bottom: 4px;"><strong>Fecha Estimada:</strong> ${formatDate(t.promiseDate)}</p>` : ''}
+                        ${t.image ? `<img src="${t.image}" class="image-thumbnail" onclick="openFullscreenImage('${t.image}')" style="margin-top: 12px;">` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterBy(type) {
+            currentFilter = type;
+            document.querySelectorAll('.filter-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            displayTransactions();
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            const date = new Date(dateStr);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            let result = `${day}/${month}/${year}`;
+            if (dateStr.includes('T')) {
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                result += ` ${hours}:${minutes}`;
+            }
+            return result;
+        }
+
+        function openFullscreenImage(src) {
+            document.getElementById('fullscreenImage').src = src;
+            document.getElementById('fullscreenImageOverlay').classList.add('active');
+        }
+
+        function closeFullscreenImage() {
+            document.getElementById('fullscreenImageOverlay').classList.remove('active');
+        }
+    </script>
+</body>
+</html>
