@@ -187,6 +187,8 @@
                     <button class="filter-button" onclick="filterBy('expense')">💸 Egresos</button>
                     <button class="filter-button" onclick="filterBy('promise')">📝 Promesas</button>
                     <button class="filter-button" onclick="filterBy('transfer')">🔄 Transferencias</button>
+                <button class="filter-button" onclick="filterBy('pendinglinked')">🔗 Ingreso p Gasto Pendiente</button>
+                <button class="filter-button" onclick="filterBy('realizedlinked')">✅ IngresoGasto Realizado</button>
                 </div>
 
                 <div id="transactionsList"></div>
@@ -285,6 +287,8 @@
             const container = document.getElementById('transactionsList');
             let transactions = profileData.transactions.filter(t => {
                 if (currentFilter === 'all') return true;
+                if (currentFilter === 'pendinglinked') return t.type === 'linked' && t.status === 'pending';
+                if (currentFilter === 'realizedlinked') return t.type === 'linked' && t.status === 'realized';
                 return t.type === currentFilter;
             });
 
