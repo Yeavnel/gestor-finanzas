@@ -48,22 +48,10 @@
             font-size: 12px;
             font-weight: 600;
         }
-        .badge-income {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        .badge-expense {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        .badge-promise {
-            background: #fef3c7;
-            color: #92400e;
-        }
-        .badge-transfer {
-            background: #dbeafe;
-            color: #1e40af;
-        }
+        .badge-income { background: #d1fae5; color: #065f46; }
+        .badge-expense { background: #fee2e2; color: #991b1b; }
+        .badge-promise { background: #fef3c7; color: #92400e; }
+        .badge-transfer { background: #dbeafe; color: #1e40af; }
         .image-thumbnail {
             width: 120px;
             height: 120px;
@@ -132,7 +120,7 @@
 <body>
     <div class="container">
         <div id="loadingScreen" class="loading">
-            <div style="font-size: 48px; margin-bottom: 20px;">📊</div>
+            <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
             <h2 style="font-size: 24px; font-weight: bold;">Cargando datos...</h2>
             <p style="opacity: 0.8; margin-top: 10px;">Por favor espera un momento</p>
         </div>
@@ -149,7 +137,7 @@
             <header class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
                 <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
                     <div>
-                        <h1 style="font-size: 32px; font-weight: bold; margin-bottom: 8px;">📊 <span id="profileName">Gestor de Finanzas</span></h1>
+                        <h1 style="font-size: 32px; font-weight: bold; margin-bottom: 8px;"><span id="profileName">Gestor de Finanzas</span></h1>
                         <p style="opacity: 0.9;">Datos compartidos - Solo lectura</p>
                     </div>
                     <div style="text-align: right;">
@@ -180,22 +168,20 @@
 
             <div class="card">
                 <h2 style="font-size: 24px; font-weight: bold; margin-bottom: 16px;">📋 Historial de Transacciones</h2>
-                
                 <div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
                     <button class="filter-button active" onclick="filterBy('all')">Todas</button>
                     <button class="filter-button" onclick="filterBy('income')">💰 Ingresos</button>
                     <button class="filter-button" onclick="filterBy('expense')">💸 Egresos</button>
                     <button class="filter-button" onclick="filterBy('promise')">📝 Promesas</button>
                     <button class="filter-button" onclick="filterBy('transfer')">🔄 Transferencias</button>
-                <button class="filter-button" onclick="filterBy('pendinglinked')">🔗 Gasto Destinado Pendiente</button>
-                <button class="filter-button" onclick="filterBy('realizedlinked')">✅ Gasto Destinado Realizado</button>
+                    <button class="filter-button" onclick="filterBy('pendinglinked')">🔗 Gasto Pendiente</button>
+                    <button class="filter-button" onclick="filterBy('realizedlinked')">✅ Gasto Realizado</button>
                 </div>
-
                 <div id="transactionsList"></div>
             </div>
 
             <footer class="card" style="text-align: center; color: #6b7280;">
-                <p>🔒 Vista de solo lectura - Gestor de Finanzas</p>
+                <p>Vista de solo lectura - Gestor de Finanzas</p>
                 <p style="font-size: 12px; margin-top: 8px;">Los datos se cargan desde el enlace compartido</p>
             </footer>
         </div>
@@ -209,9 +195,7 @@
         let profileData = null;
         let currentFilter = 'all';
 
-        window.addEventListener('DOMContentLoaded', () => {
-            loadSharedData();
-        });
+        window.addEventListener('DOMContentLoaded', loadSharedData);
 
         function loadSharedData() {
             try {
@@ -266,12 +250,19 @@
             let totalExpense = 0;
 
             profileData.transactions.forEach(t => {
-                if (t.type === 'income') {
+                if (t.type == 'income') {
                     totalIncome += t.amount;
-                } else if (t.type === 'expense') {
+                } else if (t.type == 'expense') {
                     totalExpense += t.amount;
-                } else if (t.type === 'promise' && t.promiseStatus === 'completed') {
+                } else if (t.type == 'promise' && t.promiseStatus == 'completed') {
                     totalIncome += t.amount;
+                } else if (t.type == 'linked') {
+                    if (t.status == 'pending') {
+                        totalIncome += t.amount;
+                    } else if (t.status == 'realized') {
+                        totalIncome += t.amount;
+                        totalExpense += t.amount;
+                    }
                 }
             });
 
@@ -285,38 +276,44 @@
 
         function displayTransactions() {
             const container = document.getElementById('transactionsList');
+
             let transactions = profileData.transactions.filter(t => {
-                if (currentFilter === 'all') return true;
-                if (currentFilter === 'pendinglinked') return t.type === 'linked' && t.status === 'pending';
-                if (currentFilter === 'realizedlinked') return t.type === 'linked' && t.status === 'realized';
-                return t.type === currentFilter;
+                if (currentFilter == 'all') return true;
+                if (currentFilter == 'pendinglinked') return t.type == 'linked' && t.status == 'pending';
+                if (currentFilter == 'realizedlinked') return t.type == 'linked' && t.status == 'realized';
+                return t.type == currentFilter;
             });
 
             transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-            if (transactions.length === 0) {
+            if (transactions.length == 0) {
                 container.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 40px;">No hay transacciones para mostrar</p>';
                 return;
             }
 
             container.innerHTML = transactions.map(t => {
                 let badgeClass, typeIcon, typeLabel;
-                if (t.type === 'income') {
+
+                if (t.type == 'income') {
                     badgeClass = 'badge-income';
                     typeIcon = '💰';
                     typeLabel = 'Ingreso';
-                } else if (t.type === 'expense') {
+                } else if (t.type == 'expense') {
                     badgeClass = 'badge-expense';
                     typeIcon = '💸';
                     typeLabel = 'Egreso';
-                } else if (t.type === 'promise') {
+                } else if (t.type == 'promise') {
                     badgeClass = 'badge-promise';
-                    typeIcon = t.promiseStatus === 'completed' ? '✅' : '📝';
-                    typeLabel = t.promiseStatus === 'completed' ? 'Promesa Cumplida' : 'Promesa Pendiente';
-                } else if (t.type === 'transfer') {
+                    typeIcon = t.promiseStatus == 'completed' ? '✅' : '📝';
+                    typeLabel = t.promiseStatus == 'completed' ? 'Promesa Cumplida' : 'Promesa Pendiente';
+                } else if (t.type == 'transfer') {
                     badgeClass = 'badge-transfer';
                     typeIcon = '🔄';
                     typeLabel = 'Transferencia';
+                } else if (t.type == 'linked') {
+                    badgeClass = t.status == 'realized' ? 'badge-expense' : 'badge-income';
+                    typeIcon = t.status == 'realized' ? '✅' : '🔗';
+                    typeLabel = t.status == 'realized' ? 'Ingreso/Gasto Realizado' : 'Ingreso para Gasto';
                 }
 
                 return `
@@ -326,17 +323,15 @@
                                 <span style="font-size: 24px;">${typeIcon}</span>
                                 <span class="badge ${badgeClass}">${typeLabel}</span>
                             </div>
-                            <div style="font-size: 24px; font-weight: bold; color: ${t.type === 'income' ? '#059669' : '#dc2626'};">
+                            <div style="font-size: 24px; font-weight: bold; color: ${t.type == 'income' ? '#059669' : '#dc2626'};">
                                 Q${t.amount.toFixed(2)}
                             </div>
                         </div>
-                        <div style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">
-                            📅 ${formatDate(t.date)}
-                        </div>
+                        <div style="font-size: 14px; color: #6b7280; margin-bottom: 8px;">${formatDate(t.date)}</div>
                         ${t.name ? `<p style="margin-bottom: 4px;"><strong>Cliente:</strong> ${t.name}</p>` : ''}
                         ${t.concept ? `<p style="margin-bottom: 4px;"><strong>Concepto:</strong> ${t.concept}</p>` : ''}
                         ${t.invoiceNumber ? `<p style="margin-bottom: 4px;"><strong>Factura:</strong> ${t.invoiceNumber}</p>` : ''}
-                        ${t.fundSource ? `<p style="margin-bottom: 4px;"><strong>Fuente:</strong> ${t.fundSource === 'total' ? '💰 Capital Total' : '💵 Caja Chica'}</p>` : ''}
+                        ${t.fundSource ? `<p style="margin-bottom: 4px;"><strong>Fuente:</strong> ${t.fundSource == 'total' ? 'Capital Total' : 'Caja Chica'}</p>` : ''}
                         ${t.promiseDate ? `<p style="margin-bottom: 4px;"><strong>Fecha Estimada:</strong> ${formatDate(t.promiseDate)}</p>` : ''}
                         ${t.image ? `<img src="${t.image}" class="image-thumbnail" onclick="openFullscreenImage('${t.image}')" style="margin-top: 12px;">` : ''}
                     </div>
@@ -346,9 +341,7 @@
 
         function filterBy(type) {
             currentFilter = type;
-            document.querySelectorAll('.filter-button').forEach(btn => {
-                btn.classList.remove('active');
-            });
+            document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
             displayTransactions();
         }
@@ -379,4 +372,3 @@
     </script>
 </body>
 </html>
-
